@@ -1,0 +1,4 @@
+aiohttp
+requests
+fastapi 
+git+https://github.com/floxay/python-riot-auth.git

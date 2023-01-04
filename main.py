@@ -1,34 +1,62 @@
 import aiohttp, json, requests
 from fastapi import FastAPI
-import os
-import pprint
+import os, sys
+import asyncio
+from riot_auth import RiotAuth, auth_exceptions
+from getpass import getpass
+
+cw = os.get_terminal_size().columns
 
 async def Auth():
-	text0 = """
- 		██╗   ██╗ █████╗ ██╗      ██████╗ ██████╗  █████╗ ███╗   ██╗████████╗
+  text0 = """
+
+                ██╗   ██╗ █████╗ ██╗      ██████╗ ██████╗  █████╗ ███╗   ██╗████████╗
 		██║   ██║██╔══██╗██║     ██╔═══██╗██╔══██╗██╔══██╗████╗  ██║╚══██╔══╝
 		██║   ██║███████║██║     ██║   ██║██████╔╝███████║██╔██╗ ██║   ██║   
 		╚██╗ ██╔╝██╔══██║██║     ██║   ██║██╔══██╗██╔══██║██║╚██╗██║   ██║   
 		 ╚████╔╝ ██║  ██║███████╗╚██████╔╝██║  ██║██║  ██║██║ ╚████║   ██║   
-		  ╚═══╝  ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   
- 	"""
-	text1 = """
+		  ╚═══╝  ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝
+      """
+  text1 = """
 	 	███████╗████████╗ ██████╗ ██████╗ ███████╗     ██████╗██╗  ██╗███████╗ ██████╗██╗  ██╗███████╗██████╗ 
 		██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗██╔════╝    ██╔════╝██║  ██║██╔════╝██╔════╝██║ ██╔╝██╔════╝██╔══██╗
 		███████╗   ██║   ██║   ██║██████╔╝█████╗      ██║     ███████║█████╗  ██║     █████╔╝ █████╗  ██████╔╝
 		╚════██║   ██║   ██║   ██║██╔══██╗██╔══╝      ██║     ██╔══██║██╔══╝  ██║     ██╔═██╗ ██╔══╝  ██╔══██╗
 		███████║   ██║   ╚██████╔╝██║  ██║███████╗    ╚██████╗██║  ██║███████╗╚██████╗██║  ██╗███████╗██║  ██║
-		╚══════╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝     ╚═════╝╚═╝  ╚═╝╚══════╝ ╚═════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝                                                                              
- """
+		╚══════╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝     ╚═════╝╚═╝  ╚═╝╚══════╝ ╚═════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝"""
 	
-	cw = os.get_terminal_size().columns
-	pprint(center(text0,cw))
-	pprint(center(text1,cw))
-	
-async def store(jwt, region):
 
-	auth = await Auth()
-	region = auth.region
+  print(text0.center(cw))
+  print(text1.center(cw))
+
+
+  build = requests.get('https://valorant-api.com/v1/version').json()['data']['riotClientBuild']
+  print('Valorant Build '+build)
+
+  RiotAuth.RIOT_CLIENT_USER_AGENT = build + '%s (Windows;10;;Professional, x64)'
+
+  if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+  CREDS = input('Username:\n'), getpass('Password:\n')
+
+  auth = RiotAuth()
+  try: await auth.authorize(*CREDS)
+
+  except auth_exceptions.RiotAuthenticationError:
+    exit('Error: Auth Failed, Please check credentials and try again.')
+
+  except auth_exceptions.RiotMultifactorError:
+    exit('Accounts with MultiFactor enabled are not supported at this time.')
+    
+  return auth
+	
+async def store():
+
+  auth = await Auth()
+
+  print('Enter your region: \nna - North America, latam - Latin America, br -	Brazil, eu - Europe, ap - Asia Pacific, kr - Korea')
+  region = input()
   
   token_type = auth.token_type
   access_token = auth.access_token
@@ -88,41 +116,45 @@ async def store(jwt, region):
           }
         }
         out.append(data)
-        return out
+      return out
     except KeyError:
-      print('no nm')
       return None
         
-    
+  ms_text = """
+    ███╗   ███╗ █████╗ ██╗███╗   ██╗    ███████╗████████╗ ██████╗ ██████╗ ███████╗
+    ████╗ ████║██╔══██╗██║████╗  ██║    ██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗██╔════╝
+    ██╔████╔██║███████║██║██╔██╗ ██║    ███████╗   ██║   ██║   ██║██████╔╝█████╗  
+    ██║╚██╔╝██║██╔══██║██║██║╚██╗██║    ╚════██║   ██║   ██║   ██║██╔══██╗██╔══╝  
+    ██║ ╚═╝ ██║██║  ██║██║██║ ╚████║    ███████║   ██║   ╚██████╔╝██║  ██║███████╗
+    ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝    ╚══════╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝
+                                                                              """.center(cw)
+  print(ms_text)
+  print(f"""
+  
+  {skin1} for {getprice(skin1uuid)}
+  {skin2} for {getprice(skin2uuid)}
+  {skin3} for {getprice(skin3uuid)}
+  {skin4} for {getprice(skin4uuid)}
+  """)
+  
+  nm = nightmarket(data)
+  if nm != None:
+    nm_text = """
+      ███╗   ██╗██╗ ██████╗ ██╗  ██╗████████╗    ███╗   ███╗ █████╗ ██████╗ ██╗  ██╗███████╗████████╗
+      ████╗  ██║██║██╔════╝ ██║  ██║╚══██╔══╝    ████╗ ████║██╔══██╗██╔══██╗██║ ██╔╝██╔════╝╚══██╔══╝
+      ██╔██╗ ██║██║██║  ███╗███████║   ██║       ██╔████╔██║███████║██████╔╝█████╔╝ █████╗     ██║   
+      ██║╚██╗██║██║██║   ██║██╔══██║   ██║       ██║╚██╔╝██║██╔══██║██╔══██╗██╔═██╗ ██╔══╝     ██║   
+      ██║ ╚████║██║╚██████╔╝██║  ██║   ██║       ██║ ╚═╝ ██║██║  ██║██║  ██║██║  ██╗███████╗   ██║   
+      ╚═╝  ╚═══╝╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝       ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝                                                                                              
+    """.center(cw)
+    print(nm_text)
+    nm_items = []
 
+    for item in nm:
+      nmitem_text = f"{item['name']} for {item['price']['final']} ({item['price']['oringinal']} with {item['price']['discount']}% discount) \n"
+      nm_items.append(nmitem_text)
 
-  sendit = {
-    'store': [
-      {
-        "name": skin1,
-        "uuid": skin1uuid,
-        'price' : getprice(skin1uuid)
-      },
-      {
-        "name": skin2,
-        "uuid": skin2uuid,
-        'price' : getprice(skin2uuid)
-      },
-      {
-        "name": skin3,
-        "uuid": skin3uuid,
-        'price' : getprice(skin3uuid)
-      },
-      {
-        "name": skin4,
-        "uuid": skin4uuid,
-        'price' : getprice(skin4uuid)
-      }
-    ],
-    'nmdata' : nightmarket(data)
-  }
-
+    print(''.join(nm_items))
   await session.close()
-  return sendit
-if __name__ == __main__:
+if __name__ == '__main__':
 	asyncio.run(store())
